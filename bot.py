@@ -6,7 +6,9 @@ from database import init_db, get_db
 from middlewares import DbSessionMiddleware
 import aiosqlite
 
-from handlers import menu, navigation, group_actions, manage_events, register_to_event, publish_event, chat_member
+from handlers import menu, navigation, group_actions, chat_member
+from handlers.events import manage_events, register_to_event, publish_event
+from handlers.trainings import manage_trainings, publish_training, create_training_handlers
 
 async def main():
     await init_db()
@@ -28,6 +30,9 @@ async def main():
     dp.include_router(register_to_event.router)
     dp.include_router(publish_event.router)
     dp.include_router(chat_member.router)
+    dp.include_router(create_training_handlers.router)
+    dp.include_router(manage_trainings.router)
+    dp.include_router(publish_training.router)
 
     await dp.start_polling(bot)
 

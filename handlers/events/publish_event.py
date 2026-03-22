@@ -3,13 +3,16 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 import aiosqlite
 import logging
+from dotenv import load_dotenv
+import os
 
 from filters import AdminFilter
 from keyboards.inline import events_list_keyboard, registration_keyboard, back_to_group_keyboard, main_menu_keyboard
 from utils import format_date_preview
 
+load_dotenv()
 router = Router()
-
+EVENT_TOPIC_ID = os.getenv('EVENT_TOPIC_ID')
 
 @router.message(Command('events'), AdminFilter())
 async def cmd_events(message: Message, db: aiosqlite.Connection):
@@ -26,11 +29,11 @@ async def cmd_events(message: Message, db: aiosqlite.Connection):
     from keyboards.inline import groups_keyboard
     await message.answer(
         'Выберите группу для публикации мероприятия:',
-        reply_markup=groups_keyboard(groups, action='publish')
+        reply_markup=groups_keyboard(groups, action='publish_event_choose')
     )
 
 
-@router.callback_query(F.data.startswith('publish:'), AdminFilter())
+@router.callback_query(F.data.startswith('publish_event_choose:'), AdminFilter())
 async def select_group_for_publish(callback: CallbackQuery, db: aiosqlite.Connection):
     group_id = int(callback.data.split(':')[1])
     
@@ -58,6 +61,7 @@ async def select_group_for_publish(callback: CallbackQuery, db: aiosqlite.Connec
 async def publish_event(callback: CallbackQuery, db: aiosqlite.Connection):
     event_id = int(callback.data.split(':')[1])
 
+
     cursor = await db.execute(
         """SELECT event_id, group_id, creator_username, title, date, time, place, description
             FROM events WHERE event_id = ?""",
@@ -73,6 +77,8 @@ async def publish_event(callback: CallbackQuery, db: aiosqlite.Connection):
 
     await callback.bot.send_message(
         chat_id=data['group_id'],
+        message_thread_id=EVENT_TOPIC_ID,
+        parse_mode='HTML',
         text=text,
         reply_markup=registration_keyboard(event_id)
     )
@@ -119,18 +125,18 @@ async def remind_event(callback: CallbackQuery, db: aiosqlite.Connection):
     registrations = await cursor.fetchall()
     
     reminder_text = (
-        f"🔔 <b>НАПОМИНАНИЕ О МЕРОПРИЯТИИ</b> 🔔\n\n"
-        f"📌 <b>{event['title']}</b>\n"
+        f"🔔 <b>НАПОМИНАНИЕ О РЕЙСЕ</b> 🔔\n\n"
+        f"<b>{event['title']}</b>\n\n"
     )
     
     if event.get('date'):
-        reminder_text += f"📅 Дата: {event['date']}\n"
+        reminder_text += f"<i>Дата</i>: {event['date']}\n"
     if event.get('time'):
-        reminder_text += f"⏰ Время: {event['time']}\n"
+        reminder_text += f"<i>Время</i>: {event['time']}\n"
     if event.get('place'):
-        reminder_text += f"📍 Место: {event['place']}\n"
+        reminder_text += f"<i>Маршрут</i>: {event['place']}\n"
     if event.get('description'):
-        reminder_text += f"ℹ️ Описание: {event['description']}\n"
+        reminder_text += f"ℹ<i>Описание</i>: {event['description']}\n"
     
     if registrations:
         reminder_text += "\n<b>Записались:</b>\n"
@@ -153,6 +159,7 @@ async def remind_event(callback: CallbackQuery, db: aiosqlite.Connection):
     try:
         await callback.bot.send_message(
             chat_id=group_id,
+            message_thread_id=EVENT_TOPIC_ID,
             text=reminder_text,
             parse_mode="HTML",
             reply_markup=registration_keyboard(event_id)

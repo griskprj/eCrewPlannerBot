@@ -4,7 +4,7 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 import aiosqlite
 
-from handlers.create_event import CreateEvent
+from handlers.events.create_event import CreateEvent
 from handlers.send_message import SendMessage
 from keyboards.inline import (
     cancel_keyboard, skip_cancel_keyboard, confirm_keyboard, 
@@ -19,9 +19,10 @@ router = Router()
 
 
 @router.callback_query(F.data.startswith('group:'), AdminFilter())
-async def group_selected(callback: CallbackQuery, db: aiosqlite.Connection):
+async def group_selected(callback: CallbackQuery):
     """ Select action for group """
     group_id = int(callback.data.split(':')[1])
+    print('GROUP ID IN GROUP ACTIONS',group_id)
     from keyboards.inline import actions_keyboard
     await callback.message.edit_text(
         'Выберите действие:',
@@ -31,7 +32,7 @@ async def group_selected(callback: CallbackQuery, db: aiosqlite.Connection):
 
 
 @router.callback_query(F.data.startswith('create_event:'), AdminFilter())
-async def start_create_event(callback: CallbackQuery, state: FSMContext, db: aiosqlite.Connection):
+async def start_create_event(callback: CallbackQuery, state: FSMContext):
     """ Create event step 1 """
     group_id = int(callback.data.split(':')[1])
     await state.set_state(CreateEvent.title)
@@ -85,8 +86,7 @@ async def process_time(message: Message, state: FSMContext):
     await state.update_data(time=time)
     await state.set_state(CreateEvent.place)
     await message.answer(
-        "Введите место проведения (или нажмите 'Пропустить'):",
-        reply_markup=skip_cancel_keyboard(back_callback=f'group:{group_id}')
+        "Введите маршрут:"
     )
 
 @router.message(CreateEvent.place, AdminFilter())
@@ -119,7 +119,6 @@ async def process_description(message: Message, state: FSMContext):
         reply_markup=confirm_keyboard(
             confirm_data='confirm_event',
             cancel_data='cancel',
-            back_callback=f'group:{group_id}'
         )
     )
 
@@ -164,7 +163,6 @@ async def skip_step(callback: CallbackQuery, state: FSMContext):
             reply_markup=confirm_keyboard(
                 confirm_data='confirm_event',
                 cancel_data='cancel',
-                back_callback=f'group:{group_id}'
             )
         )
     else:

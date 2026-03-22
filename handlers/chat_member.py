@@ -1,6 +1,5 @@
 from aiogram import Router
-from aiogram.types import ChatMemberUpdated, Message
-from aiogram.filters import ChatMemberUpdatedFilter, IS_NOT_MEMBER, IS_MEMBER, ADMINISTRATOR, Command
+from aiogram.types import ChatMemberUpdated
 import aiosqlite
 import logging
 
@@ -20,15 +19,13 @@ async def handle_my_chat_member(update: ChatMemberUpdated, db: aiosqlite.Connect
             await db.commit()
         
         try:
-            from keyboards.inline import main_menu_keyboard
             await update.bot.send_message(
                 chat_id=group_id,
                 text=(
                     f"👋 Всем привет! Я бот для управления мероприятиями.\n\n"
                     f"Чтобы начать работу, отправьте мне команду /start в личные сообщения.\n"
                     f"Я уже добавил эту группу в вашу базу данных!"
-                ),
-                reply_markup=main_menu_keyboard()
+                )
             )
         except Exception as e:
             logging.error(f"Не удалось отправить приветствие в группу {group_id}: {e}")
